@@ -1,7 +1,0 @@
-.deps
-Makefile
-dhclient
-dhclient.man8
-dhclient.conf.man5
-dhclient-script.man8
-dhclient.leases.man5
