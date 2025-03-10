@@ -42,6 +42,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "l2tp.h"
+#include <openair3/ocp-gtpu/gtp_itf.h>
 
 struct tunnel_list tunnels;
 int rand_source;
