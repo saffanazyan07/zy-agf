@@ -183,7 +183,7 @@ struct tunnel
     struct call *self;
     struct lns *lns;            /* LNS that owns us */
     struct lac *lac;            /* LAC that owns us */
-    struct in_pktinfo_l2tp my_addr;  /* Address of my endpoint */
+    struct in_pktinfo my_addr;  /* Address of my endpoint */
     char hostname[MAXSTRLEN];   /* Remote hostname */
     char vendor[MAXSTRLEN];     /* Vendor of remote product */
     struct challenge chal_us;   /* Their Challenge to us */

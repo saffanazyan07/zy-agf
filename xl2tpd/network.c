@@ -298,7 +298,7 @@ unsigned char* get_inner_ppp_type (struct buffer *buf)
 void udp_xmit (struct buffer *buf, struct tunnel *t)
 {
     struct cmsghdr *cmsg = NULL;
-    char cbuf[CMSG_SPACE(sizeof (unsigned int) + sizeof (struct in_pktinfo_l2tp))];
+    char cbuf[CMSG_SPACE(sizeof (unsigned int) + sizeof (struct in_pktinfo))];
     unsigned int *refp;
     struct msghdr msgh;
     int err;
@@ -329,7 +329,7 @@ void udp_xmit (struct buffer *buf, struct tunnel *t)
 
 #ifdef LINUX
     if (t->my_addr.ipi_addr.s_addr){
-	struct in_pktinfo_l2tp *pktinfo;
+	struct in_pktinfo *pktinfo;
 
 	if ( ! cmsg) {
 		cmsg = CMSG_FIRSTHDR(&msgh);
@@ -340,9 +340,9 @@ void udp_xmit (struct buffer *buf, struct tunnel *t)
 
 	cmsg->cmsg_level = IPPROTO_IP;
 	cmsg->cmsg_type = IP_PKTINFO;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo_l2tp));
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
 
-	pktinfo = (struct in_pktinfo_l2tp*) CMSG_DATA(cmsg);
+	pktinfo = (struct in_pktinfo*) CMSG_DATA(cmsg);
 	*pktinfo = t->my_addr;
 
 	finallen += cmsg->cmsg_len;
@@ -451,7 +451,7 @@ void network_thread ()
      * our network socket.  Control handling is no longer done here.
      */
     struct sockaddr_in from;
-    struct in_pktinfo_l2tp to;
+    struct in_pktinfo to;
     unsigned int fromlen;
     int tunnel, call;           /* Tunnel and call */
     int recvsize;               /* Length of data received */
@@ -589,7 +589,7 @@ void network_thread ()
 #ifdef LINUX
             /* extract destination(our) addr */
             if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-                struct in_pktinfo_l2tp* pktInfo = ((struct in_pktinfo_l2tp*)CMSG_DATA(cmsg));
+                struct in_pktinfo* pktInfo = ((struct in_pktinfo*)CMSG_DATA(cmsg));
                 to = *pktInfo;
             } else
 #endif

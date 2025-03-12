@@ -38,7 +38,7 @@
 #if !defined(LINUX)
 
 /* Declare empty structure to make code portable and keep simple */
-struct in_pktinfo_l2tp {
+struct in_pktinfo {
 };
 
 #endif
