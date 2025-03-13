@@ -17,10 +17,10 @@ TUNNEL_ID="tunnel_$(date +%s)"
 
 # Function to handle termination
 cleanup() {
-    echo -e "\n[Z-AGF-INFO] Terminating PPPoE server and log monitoring..."
+    echo -e "\n[Z-AGF] Terminating PPPoE server and log monitoring..."
     sudo pkill pppoe-server
     kill "$TAIL_PID" 2>/dev/null
-    echo "[Z-AGF-INFO] Processes terminated. Exiting."
+    echo "[Z-AGF] Processes terminated. Exiting."
     exit 0
 }
 
@@ -37,11 +37,11 @@ PPPOE_PID=$!
 echo "[INFO] PPPoE server is running with PID $PPPOE_PID on $INTERFACE with IP $IP_ADDR and Tunnel ID $TUNNEL_ID."
 
 # Monitor the PPPoE server log with cleaner prefixes
-sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF-LOG] " $0 }' &
+sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF] " $0 }' &
 TAIL_PID=$!
 
 # Monitor the custom PPPoE server logs
-tail -f pppoe_server.log | awk '{ print "[Z-AGF-SERVER] " $0 }' &
+tail -f pppoe_server.log | awk '{ print "[Z-AGF] " $0 }' &
 
 # Wait for processes to finish
 wait $PPPOE_PID
