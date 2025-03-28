@@ -94,7 +94,7 @@ journalctl -u strongswan
 ### 3. F1AP Connection Failing
 Verify that the CU is reachable and that F1AP messages are being exchanged correctly:
 ```bash
-tcpdump -i eth0 -n port 38472
+sudo chmod +x <file.sh>
 ```
 
 ## Contributing
