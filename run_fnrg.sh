@@ -8,11 +8,19 @@ cleanup() {
     echo -e "\n[FNRG] Terminating PPPoE connection..."
     sudo pkill pppd
     echo "[FNRG] PPPoE connection terminated."
+    echo "[RELAY] Stopping PPPoE relay..."
+    sudo pkill pppoe-relay
+    echo "[RELAY] PPPoE relay terminated."
     exit 0
 }
 
 # Trap SIGINT (Ctrl+C) and SIGTERM to trigger cleanup
 trap cleanup SIGINT SIGTERM
+
+# Start PPPoE relay in the background
+sudo pppoe-relay -B enp0s8 -B enp0s10 -n 1 &
+RELAY_PID=$!
+echo "[RELAY] PPPoE relay started with PID $RELAY_PID."
 
 # Start PPPoE connection in the background and redirect output to log
 sudo pppd call rg | tee "$LOG_FILE" | awk '{ print "[FNRG] " $0 }' &
@@ -44,10 +52,3 @@ fi
 # Ping 10.45.0.1 and verify success
 echo "[FNRG] Pinging 10.45.0.1 to verify connection..."
 if ping -c 1 10.45.0.1 > /dev/null 2>&1; then
-    echo "[FNRG] PDU session to UPF successfully established!"
-else
-    echo "[FNRG] Failed to reach UPF at 10.45.0.1."
-fi
-
-# Wait to keep the script alive for signal trapping
-wait
