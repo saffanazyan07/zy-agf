@@ -52,3 +52,11 @@ fi
 # Ping 10.45.0.1 and verify success
 echo "[FNRG] Pinging 10.45.0.1 to verify connection..."
 if ping -c 1 10.45.0.1 > /dev/null 2>&1; then
+    echo "[FNRG] PDU session to UPF successfully established!"
+else
+    echo "[FNRG] Failed to reach UPF at 10.45.0.1."
+fi
+
+# Keep script alive to handle termination signals
+wait
+
