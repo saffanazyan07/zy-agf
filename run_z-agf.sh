@@ -27,6 +27,19 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and SIGTERM to trigger cleanup
 trap cleanup SIGINT SIGTERM
 
+# Change directory to the build folder
+cd ran_build/build
+
+# Run the nr-softmodem command
+echo "[Z-AGF] Starting nr-softmodem..."
+sudo ./nr-softmodem --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci0.conf &
+SOFTMODEM_PID=$!
+
+# Run the nr-uesoftmodem command
+echo "[Z-AGF] Starting nr-uesoftmodem..."
+sudo ./nr-uesoftmodem -C 3450720000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/ue.conf &
+UESOFTMODEM_PID=$!
+
 # Log the tunnel ID and IP
 echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | tee -a tunnel_log.txt
 
@@ -46,3 +59,5 @@ tail -f pppoe_server.log | awk '{ print "[Z-AGF] " $0 }' &
 # Wait for processes to finish
 wait $PPPOE_PID
 wait $TAIL_PID
+wait $SOFTMODEM_PID
+wait $UESOFTMODEM_PID
