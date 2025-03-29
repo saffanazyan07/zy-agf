@@ -68,9 +68,22 @@ sleep 3  # Wait for xl2tpd to be ready
 sudo xl2tpd-control connect-lac n5gc
 sleep 2
 
+# Add route for 10.46.0.0/24
+sudo ip route add 10.46.0.0/24 dev ppp0
+echo "[N5GC] Route to 10.46.0.0/24 via ppp0 added successfully."
+
+# Test connectivity to 10.46.0.1
+echo "[N5GC] Pinging 10.46.0.1 to verify connection..."
+if ping -c 1 10.46.0.1 > /dev/null 2>&1; then
+    echo "[N5GC] Connection to 10.46.0.1 is successful!"
+else
+    echo "[N5GC] Failed to reach 10.46.0.1."
+fi
+
 # Display L2TP logs
 echo "[N5GC] Monitoring L2TP logs..."
 sudo journalctl -u xl2tpd -f | tee "$L2TP_LOG_FILE" &
 
 # Wait to keep the script alive for signal trapping
 wait
+
