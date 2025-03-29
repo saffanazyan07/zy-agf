@@ -64,23 +64,9 @@ echo "[N5GC] Restarting xl2tpd service..."
 sudo systemctl restart xl2tpd
 sleep 3  # Wait for xl2tpd to be ready
 
-# Check if tunnel exists
-if sudo xl2tpd-control add-lac n5gc | grep -q 'n5gc'; then
-    echo "[N5GC] Tunnel 'n5gc' already exists. Attempting to connect..."
-else
-    echo "[N5GC] Tunnel 'n5gc' does not exist. Attempting to create and connect..."
-fi
-
 # Initiate L2TP connection
 sudo xl2tpd-control connect-lac n5gc
 sleep 2
-
-# Verify L2TP connection
-if sudo xl2tpd-control list | grep -q 'n5gc'; then
-    echo "[N5GC] L2TP tunnel 'n5gc' successfully established."
-else
-    echo "[N5GC] Failed to establish L2TP tunnel 'n5gc'. Check the logs for details."
-fi
 
 # Display L2TP logs
 echo "[N5GC] Monitoring L2TP logs..."
