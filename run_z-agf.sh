@@ -51,6 +51,16 @@ if [ -z "$IP_ADDR" ]; then
     cleanup
 fi
 
+# Tambahan konfigurasi setelah interface oaitun_ue1 aktif
+echo "[Z-AGF] Enabling IPv4 forwarding..."
+sudo sysctl -w net.ipv4.ip_forward=1
+
+echo "[Z-AGF] Setting up NAT (MASQUERADE) for oaitun_ue1..."
+sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o oaitun_ue1 -j MASQUERADE
+
+echo "[Z-AGF] Adding route to 10.45.0.0/24 via oaitun_ue1..."
+sudo ip route add 10.45.0.0/24 dev oaitun_ue1
+
 # Log informasi tunnel
 echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | sudo tee -a tunnel_log.txt >/dev/null
 
