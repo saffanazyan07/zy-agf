@@ -63,6 +63,17 @@ if ping -c 1 10.45.0.1 > /dev/null 2>&1; then
 else
     echo "[FNRG] Failed to reach UPF at 10.45.0.1."
 fi
+# Add route
+sudo ip route add 10.51.0.0/24 dev ppp0
+echo "[FNRG] Route to 10.51.0.0/24 dev ppp0  added successfully."
+
+# Ping verification
+echo "[FNRG] Pinging 10.51.0.88 to verify connection..."
+if ping -c 1 10.51.0.88 > /dev/null 2>&1; then
+    echo "[FNRG] PDU session to CU successfully established!"
+else
+    echo "[FNRG] Failed to reach CU at 10.51.0.88."
+fi
 
 # Wait to keep script running for cleanup
 wait
