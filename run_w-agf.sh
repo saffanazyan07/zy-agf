@@ -1,48 +1,57 @@
 #!/bin/bash
 
-# Interface to be used
-INTERFACE="enp0s9"
+echo "[INFO] Starting gNB with config: open5gs-gnb.yaml..."
+build/nr-gnb -c config/open5gs-gnb.yaml &
+GNB_PID=$!
 
-# Get the IP address from the  interface
+sleep 2
+
+INTERFACE="enp0s9"
 IP_ADDR=$(ip -4 addr show uesimtun0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 
-# Check if the IP address was found
 if [ -z "$IP_ADDR" ]; then
-    echo "Error: Unable to find IP for uesimtun0."
+    echo "[ERROR] Failed to detect IP address on uesimtun0. Please check UE connectivity."
     exit 1
 fi
 
-# Generate a unique tunnel ID
 TUNNEL_ID="tunnel_$(date +%s)"
 
-# Function to handle termination
+# Cleanup ONLY when terminated (SIGINT or SIGTERM)
 cleanup() {
-    echo -e "\n[Z-AGF-INFO] Terminating PPPoE server and log monitoring..."
+    echo -e "\n[Z-AGF-INFO] Cleaning up all processes (manual termination)..."
+    echo "[Z-AGF-INFO] Stopping PPPoE server..."
     sudo pkill pppoe-server
-    kill "$TAIL_PID" 2>/dev/null
-    echo "[Z-AGF-INFO] Processes terminated. Exiting."
+    echo "[Z-AGF-INFO] Stopping UE and gNB..."
+    kill $GNB_PID 2>/dev/null
+    kill $UE_PID 2>/dev/null
+    kill $TAIL_PID1 2>/dev/null
+    kill $TAIL_PID2 2>/dev/null
+    echo "[Z-AGF-INFO] All processes have been terminated. Exiting."
     exit 0
 }
 
-# Trap SIGINT (Ctrl+C) and SIGTERM to trigger cleanup
+# Trap only termination signals
 trap cleanup SIGINT SIGTERM
 
-# Log the tunnel ID and IP
-echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | tee -a tunnel_log.txt
+echo "[INFO] Tunnel ID: $TUNNEL_ID | Interface: $INTERFACE | UE IP: $IP_ADDR" | tee -a tunnel_log.txt
 
-# Start PPPoE server and redirect logs
-sudo pppoe-server -I "$INTERFACE" -L "$IP_ADDR" -N 2 >pppoe_server.log 2>&1 &
+echo "[INFO] Launching PPPoE server on $INTERFACE with IP $IP_ADDR..."
+sudo pppoe-server -I "$INTERFACE" -L "$IP_ADDR" -N 2 > pppoe_server.log 2>&1 &
 PPPOE_PID=$!
 
-echo "[INFO] PPPoE server is running with PID $PPPOE_PID on $INTERFACE with IP $IP_ADDR and Tunnel ID $TUNNEL_ID."
+# Monitor main PPPoE log
+( sudo tail -F /var/log/pppoe.log | awk '{ print "[Z-AGF-LOG] " $0 }' ) &
+TAIL_PID1=$!
 
-# Monitor the PPPoE server log with cleaner prefixes
-sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF-LOG] " $0 }' &
-TAIL_PID=$!
+# Monitor custom PPPoE server log
+( tail -F pppoe_server.log | awk '{ print "[Z-AGF-SERVER] " $0 }' ) &
+TAIL_PID2=$!
 
-# Monitor the custom PPPoE server logs
-tail -f pppoe_server.log | awk '{ print "[Z-AGF-SERVER] " $0 }' &
-
-# Wait for processes to finish
+# Wait for all child processes to finish naturally
+wait $GNB_PID
+wait $UE_PID
 wait $PPPOE_PID
-wait $TAIL_PID
+wait $TAIL_PID1
+wait $TAIL_PID2
+
+echo "[INFO] W-AGF procedure for FNRG1 completed successfully."
