@@ -6,6 +6,12 @@ GNB_PID=$!
 
 sleep 2
 
+echo "[INFO] Starting UE with config: open5gs-ue1.yaml..."
+sudo build/nr-ue -c config/open5gs-ue1.yaml &
+UE_PID=$!
+
+sleep 2
+
 INTERFACE="enp0s9"
 IP_ADDR=$(ip -4 addr show uesimtun0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 
