@@ -46,11 +46,9 @@ Ensure you have the following dependencies installed:
 
 ### Build Instructions
 ```bash
-git clone https://github.com/your-repo/z-agf.git
+git clone https://github.com/saffanazyan07/zy-agf.git
 cd z-agf
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+sudo chmod +x run_z-agf.sh
 ```
 
 ## Configuration
