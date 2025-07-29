@@ -21,7 +21,7 @@ cd ../../../cmake_targets/ran_build/build || exit 1
 
 # Start gNB
 echo "[Z-AGF] Starting nr-softmodem..."
-sudo ./nr-softmodem --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci1.conf \
+sudo ./z-agf --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci1.conf \
   2>&1 | sudo tee nr-du.log >/dev/null &
 SOFTMODEM_PID=$!
 
