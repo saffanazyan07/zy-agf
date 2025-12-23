@@ -1,0 +1,3 @@
+[submodule "dhcp"]
+	path = dhcp
+	url = https://github.com/isc-projects/dhcp.git
