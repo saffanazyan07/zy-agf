@@ -17,7 +17,6 @@
 ***********************************************************************/
 
 #include "config.h"
-
 #include <sys/socket.h>
 
 #if defined(HAVE_NETPACKET_PACKET_H) || defined(HAVE_LINUX_IF_PACKET_H)
@@ -49,8 +48,7 @@
 #include <linux/if.h>
 #endif
 
-static void InterfaceHandler(EventSelector *es,
-			int fd, unsigned int flags, void *data);
+static void InterfaceHandler(EventSelector *es, int fd, unsigned int flags, void *data);
 static void startPPPD(ClientSession *sess);
 static void sendErrorPADS(int sock, unsigned char *source, unsigned char *dest,
 			  int errorTag, char *errorMsg);
@@ -123,13 +121,10 @@ static uint16_t max_ppp_payload = 0;
 
 /* File with PPPD options */
 static char *pppoptfile = NULL;
-
 static char *pppd_path = PPPD_PATH;
 static char *pppoe_path = PPPOE_PATH;
-
 static char *motd_string = NULL;
 static char *hurl_string = NULL;
-
 static int Debug = 0;
 static int CheckPoolSyntax = 0;
 
@@ -138,7 +133,6 @@ static int Synchronous = 0;
 
 /* Ignore PADI if no free sessions */
 static int IgnorePADIIfNoFreeSessions = 0;
-
 static int KidPipe[2] = {-1, -1};
 static int LockFD = -1;
 
@@ -180,8 +174,7 @@ static PPPoETag requestedService;
 
 #define HOSTNAMELEN 256
 
-static int
-count_sessions_from_mac(unsigned char *eth)
+static int count_sessions_from_mac(unsigned char *eth)
 {
     int n=0;
     ClientSession *s = BusySessions;
@@ -235,8 +228,7 @@ ControlCommand cmd_root[] = {
 *%DESCRIPTION:
 * Called synchronously when a child dies.  Remove from busy list.
 ***********************************************************************/
-static void
-childHandler(pid_t pid, int status, void *s)
+static void childHandler(pid_t pid, int status, void *s)
 {
     ClientSession *session = s;
 
@@ -245,9 +237,7 @@ childHandler(pid_t pid, int status, void *s)
 
     memset(&conn, 0, sizeof(conn));
 
-    syslog(LOG_INFO,
-	   "Session %u closed for client "
-	   "%02x:%02x:%02x:%02x:%02x:%02x (%d.%d.%d.%d) on %s",
+    syslog(LOG_INFO, "Session %u closed for client " "%02x:%02x:%02x:%02x:%02x:%02x (%d.%d.%d.%d) on %s",
 	   (unsigned int) ntohs(session->sess),
 	   session->eth[0], session->eth[1], session->eth[2],
 	   session->eth[3], session->eth[4], session->eth[5],
@@ -283,8 +273,7 @@ childHandler(pid_t pid, int status, void *s)
 *%DESCRIPTION:
 * Increments addr in-place
 ***********************************************************************/
-static void
-incrementIPAddress(unsigned char ip[IPV4ALEN])
+static void incrementIPAddress(unsigned char ip[IPV4ALEN])
 {
     ip[3]++;
     if (!ip[3]) {
@@ -308,8 +297,7 @@ incrementIPAddress(unsigned char ip[IPV4ALEN])
 * Checks if ip is the null address used to indicate that IP allocation is
 * to be delegated to pppd.
 ***********************************************************************/
-static int
-ipIsNull(const unsigned char ip[IPV4ALEN])
+static int ipIsNull(const unsigned char ip[IPV4ALEN])
 {
     int i;
     for (i = 0; i < IPV4ALEN; ++i)
@@ -327,8 +315,7 @@ ipIsNull(const unsigned char ip[IPV4ALEN])
 *%DESCRIPTION:
 * Kills all pppd processes (and hence all PPPoE sessions)
 ***********************************************************************/
-void
-killAllSessions(void)
+void killAllSessions(void)
 {
     ClientSession *sess = BusySessions;
     while(sess) {
@@ -347,8 +334,7 @@ killAllSessions(void)
 *%DESCRIPTION:
 * Reads a list of IP addresses from a file.
 ***********************************************************************/
-static int
-parseAddressPool(char const *fname, int install)
+static int parseAddressPool(char const *fname, int install)
 {
     FILE *fp = fopen(fname, "r");
     int numAddrs = 0;
@@ -435,9 +421,7 @@ parseAddressPool(char const *fname, int install)
 *%DESCRIPTION:
 * Picks interesting tags out of a PADI packet
 ***********************************************************************/
-void
-parsePADITags(uint16_t type, uint16_t len, unsigned char *data,
-	      void *extra)
+void parsePADITags(uint16_t type, uint16_t len, unsigned char *data, void *extra)
 {
     switch(type) {
     case TAG_PPP_MAX_PAYLOAD:
@@ -449,17 +433,20 @@ parsePADITags(uint16_t type, uint16_t len, unsigned char *data,
 	    }
 	}
 	break;
+
     case TAG_SERVICE_NAME:
 	/* Copy requested service name */
 	requestedService.type = htons(type);
 	requestedService.length = htons(len);
 	memcpy(requestedService.payload, data, len);
 	break;
+
     case TAG_RELAY_SESSION_ID:
 	relayId.type = htons(type);
 	relayId.length = htons(len);
 	memcpy(relayId.payload, data, len);
 	break;
+
     case TAG_HOST_UNIQ:
 	hostUniq.type = htons(type);
 	hostUniq.length = htons(len);
@@ -480,9 +467,7 @@ parsePADITags(uint16_t type, uint16_t len, unsigned char *data,
 *%DESCRIPTION:
 * Picks interesting tags out of a PADR packet
 ***********************************************************************/
-void
-parsePADRTags(uint16_t type, uint16_t len, unsigned char *data,
-	      void *extra)
+void parsePADRTags(uint16_t type, uint16_t len, unsigned char *data, void *extra)
 {
     switch(type) {
     case TAG_PPP_MAX_PAYLOAD:
@@ -494,21 +479,25 @@ parsePADRTags(uint16_t type, uint16_t len, unsigned char *data,
 	    }
 	}
 	break;
+
     case TAG_RELAY_SESSION_ID:
 	relayId.type = htons(type);
 	relayId.length = htons(len);
 	memcpy(relayId.payload, data, len);
 	break;
+
     case TAG_HOST_UNIQ:
 	hostUniq.type = htons(type);
 	hostUniq.length = htons(len);
 	memcpy(hostUniq.payload, data, len);
 	break;
+
     case TAG_AC_COOKIE:
 	receivedCookie.type = htons(type);
 	receivedCookie.length = htons(len);
 	memcpy(receivedCookie.payload, data, len);
 	break;
+
     case TAG_SERVICE_NAME:
 	requestedService.type = htons(type);
 	requestedService.length = htons(len);
@@ -526,8 +515,7 @@ parsePADRTags(uint16_t type, uint16_t len, unsigned char *data,
 *%DESCRIPTION:
 * Prints a message plus the errno value to stderr and syslog and exits.
 ***********************************************************************/
-void
-fatalSys(char const *str)
+void fatalSys(char const *str)
 {
     printErr("%s: %s", str, strerror(errno));
     exit(EXIT_FAILURE);
@@ -542,8 +530,7 @@ fatalSys(char const *str)
 *%DESCRIPTION:
 * Prints a message plus the errno value to syslog.
 ***********************************************************************/
-void
-sysErr(char const *str)
+void sysErr(char const *str)
 {
     printErr("%.256s: %.256s", str, strerror(errno));
 }
@@ -557,8 +544,7 @@ sysErr(char const *str)
 *%DESCRIPTION:
 * Prints a message to stderr and syslog and exits.
 ***********************************************************************/
-void
-rp_fatal(char const *str)
+void rp_fatal(char const *str)
 {
     printErr("%s", str);
     exit(EXIT_FAILURE);
@@ -578,11 +564,10 @@ rp_fatal(char const *str)
 * Forms the md5 sum of peer MAC address, our MAC address and seed, useful
 * in a PPPoE Cookie tag.
 ***********************************************************************/
-void
-genCookie(unsigned char const *peerEthAddr,
-	  unsigned char const *myEthAddr,
-	  unsigned char const *seed,
-	  unsigned char *cookie)
+void genCookie(unsigned char const *peerEthAddr,
+	  		   unsigned char const *myEthAddr,
+	  		   unsigned char const *seed,
+	  		   unsigned char *cookie)
 {
     struct MD5Context ctx;
     pid_t pid = getpid();
@@ -606,8 +591,7 @@ genCookie(unsigned char const *peerEthAddr,
 *%DESCRIPTION:
 * Sends a PADO packet back to client
 ***********************************************************************/
-void
-processPADI(Interface *ethif, PPPoEPacket *packet, int len)
+void processPADI(Interface *ethif, PPPoEPacket *packet, int len)
 {
     PPPoEPacket pado;
     PPPoETag acname;
@@ -784,8 +768,7 @@ processPADI(Interface *ethif, PPPoEPacket *packet, int len)
 *%DESCRIPTION:
 * Kills session whose session-ID is in PADT packet.
 ***********************************************************************/
-void
-processPADT(Interface *ethif, PPPoEPacket *packet, int len)
+void processPADT(Interface *ethif, PPPoEPacket *packet, int len)
 {
     size_t i;
 
@@ -858,8 +841,7 @@ processPADT(Interface *ethif, PPPoEPacket *packet, int len)
 * Sends a PADS packet back to client and starts a PPP session if PADR
 * packet is OK.
 ***********************************************************************/
-void
-processPADR(Interface *ethif, PPPoEPacket *packet, int len)
+void processPADR(Interface *ethif, PPPoEPacket *packet, int len)
 {
     unsigned char cookieBuffer[COOKIE_LEN];
     ClientSession *cliSession;
@@ -1101,8 +1083,7 @@ processPADR(Interface *ethif, PPPoEPacket *packet, int len)
 *%DESCRIPTION:
 * Call this in order to terminate the server.
 ***********************************************************************/
-static __attribute__((noreturn)) void
-pppoe_terminate(void)
+static __attribute__((noreturn)) void pppoe_terminate(void)
 {
     killAllSessions();
     exit(EXIT_SUCCESS);
@@ -1117,8 +1098,7 @@ pppoe_terminate(void)
 *%DESCRIPTION:
 * Called by SIGTERM or SIGINT.  Causes all sessions to be killed!
 ***********************************************************************/
-static void
-termHandler(int sig)
+static void termHandler(int sig)
 {
     syslog(LOG_INFO,
 	   "Terminating on signal %d -- killing all PPPoE sessions",
@@ -1135,8 +1115,7 @@ termHandler(int sig)
 *%DESCRIPTION:
 * Prints usage instructions
 ***********************************************************************/
-void
-usage(char const *argv0)
+void usage(char const *argv0)
 {
     fprintf(stderr, "Usage: %s [options]\n", argv0);
     fprintf(stderr, "Options:\n");
@@ -1190,8 +1169,7 @@ usage(char const *argv0)
 *%DESCRIPTION:
 * Main program of PPPoE server
 ***********************************************************************/
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 
     FILE *fp;
@@ -1769,8 +1747,7 @@ main(int argc, char **argv)
     return 0;
 }
 
-void
-serverProcessPacket(Interface *i)
+void serverProcessPacket(Interface *i)
 {
     int len;
     PPPoEPacket packet;
@@ -1835,8 +1812,7 @@ serverProcessPacket(Interface *i)
 *%DESCRIPTION:
 * Sends a PADS packet with an error message
 ***********************************************************************/
-void
-sendErrorPADS(int sock,
+void sendErrorPADS(int sock,
 	      unsigned char *source,
 	      unsigned char *dest,
 	      int errorTag,
@@ -1890,8 +1866,7 @@ sendErrorPADS(int sock,
 * into account, returning 0 if, and only if, both IP addresses are delegated,
 * and 1 otherwise.
 ***********************************************************************/
-static void
-makePPPDIpArg(char* buffer, const unsigned char localip[IPV4ALEN], const unsigned char remoteip[IPV4ALEN])
+static void makePPPDIpArg(char* buffer, const unsigned char localip[IPV4ALEN], const unsigned char remoteip[IPV4ALEN])
 {
     if (!ipIsNull(localip))
 	buffer += sprintf(buffer, "%u.%u.%u.%u", localip[0], localip[1], localip[2], localip[3]);
@@ -1909,8 +1884,7 @@ makePPPDIpArg(char* buffer, const unsigned char localip[IPV4ALEN], const unsigne
 *%DESCRIPTION:
 * Starts PPPD for user- or kernel-mode PPPoE
 ***********************************************************************/
-static void
-startPPPD(ClientSession *session)
+static void startPPPD(ClientSession *session)
 {
     /* Leave some room */
     char *argv[64];
@@ -2040,8 +2014,7 @@ startPPPD(ClientSession *session)
 * %DESCRIPTION:
 *  Handles a packet ready at an interface
 ***********************************************************************/
-void
-InterfaceHandler(EventSelector *es,
+void InterfaceHandler(EventSelector *es,
 		 int fd,
 		 unsigned int flags,
 		 void *data)
@@ -2059,8 +2032,7 @@ InterfaceHandler(EventSelector *es,
 * %DESCRIPTION:
 *  Kills pppd.
 ***********************************************************************/
-static void
-PppoeStopSession(ClientSession *ses,
+static void PppoeStopSession(ClientSession *ses,
 		 char const *reason)
 {
     /* Temporary structure for sending PADT's. */
@@ -2088,8 +2060,7 @@ PppoeStopSession(ClientSession *ses,
 * %RETURNS:
 *  True if session is active, false if not.
 ***********************************************************************/
-static int
-PppoeSessionIsActive(ClientSession *ses)
+static int PppoeSessionIsActive(ClientSession *ses)
 {
     return (ses->pid != 0);
 }
@@ -2104,8 +2075,7 @@ PppoeSessionIsActive(ClientSession *ses)
 *  Allocates a ClientSession structure and removes from free list, puts
 *  on busy list
 ***********************************************************************/
-ClientSession *
-pppoe_alloc_session(void)
+ClientSession * pppoe_alloc_session(void)
 {
     ClientSession *ses = FreeSessions;
     if (!ses) return NULL;
@@ -2142,8 +2112,7 @@ pppoe_alloc_session(void)
 * %DESCRIPTION:
 *  Places a ClientSession on the free list.
 ***********************************************************************/
-int
-pppoe_free_session(ClientSession *ses)
+int pppoe_free_session(ClientSession *ses)
 {
     ClientSession *cur, *prev;
 
@@ -2198,8 +2167,7 @@ pppoe_free_session(ClientSession *ses)
 * %DESCRIPTION:
 *  Sends a PADM packet containing a HURL or MOTM tag to the victim...er, peer.
 ***********************************************************************/
-void
-sendHURLorMOTM(PPPoEConnection *conn, char const *url, uint16_t tag)
+void sendHURLorMOTM(PPPoEConnection *conn, char const *url, uint16_t tag)
 {
     PPPoEPacket packet;
     PPPoETag hurl;

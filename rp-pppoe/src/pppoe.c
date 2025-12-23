@@ -18,20 +18,16 @@
 
 #include <syslog.h>
 #include <getopt.h>
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-
 #include <signal.h>
-
 #ifdef HAVE_N_HDLC
 #ifndef N_HDLC
 #include <pty.h>
@@ -46,14 +42,11 @@
 /* Global variables -- options */
 int optInactivityTimeout = 0;	/* Inactivity timeout */
 int optClampMSS          = 0;	/* Clamp MSS to this value */
-int optSkipSession       = 0;	/* Perform discovery, print session info
-				   and exit */
+int optSkipSession       = 0;	/* Perform discovery, print session info and exit */
 int optFloodDiscovery    = 0;   /* Flood server with discovery requests.
-				   USED FOR STRESS-TESTING ONLY.  DO NOT
-				   USE THE -F OPTION AGAINST A REAL ISP */
-
-PPPoEConnection *Connection = NULL; /* Must be global -- used
-				       in signal handler */
+				   				   USED FOR STRESS-TESTING ONLY.  DO NOT
+				   				   USE THE -F OPTION AGAINST A REAL ISP */
+PPPoEConnection *Connection = NULL; /* Must be global -- used in signal handler */
 
 /***********************************************************************
 *%FUNCTION: sendSessionPacket
@@ -66,8 +59,7 @@ PPPoEConnection *Connection = NULL; /* Must be global -- used
 *%DESCRIPTION:
 * Transmits a session packet to the peer.
 ***********************************************************************/
-void
-sendSessionPacket(PPPoEConnection *conn, PPPoEPacket *packet, int len)
+void sendSessionPacket(PPPoEConnection *conn, PPPoEPacket *packet, int len)
 {
     packet->length = htons(len);
     if (optClampMSS) {
@@ -100,8 +92,7 @@ sendSessionPacket(PPPoEConnection *conn, PPPoEPacket *packet, int len)
 * We got a discovery packet during the session stage.  This most likely
 * means a PADT.
 ***********************************************************************/
-static void
-sessionDiscoveryPacket(PPPoEConnection *conn)
+static void sessionDiscoveryPacket(PPPoEConnection *conn)
 {
     PPPoEPacket packet;
     int len;
@@ -164,8 +155,7 @@ sessionDiscoveryPacket(PPPoEConnection *conn)
 *%DESCRIPTION:
 * Handles the "session" phase of PPPoE
 ***********************************************************************/
-void
-session(PPPoEConnection *conn)
+void session(PPPoEConnection *conn)
 {
     fd_set readable;
     PPPoEPacket packet;
@@ -253,8 +243,7 @@ session(PPPoEConnection *conn)
 * If an established session exists send PADT to terminate from session
 *  from our end
 ***********************************************************************/
-static void
-sigPADT(int src)
+static void sigPADT(int src)
 {
   syslog(LOG_DEBUG,"Received signal %d on session %d.",
 	 (int)src, (int) ntohs(Connection->session));
@@ -271,8 +260,7 @@ sigPADT(int src)
 *%DESCRIPTION:
 * Prints usage information and exits.
 ***********************************************************************/
-void
-usage(char const *argv0)
+void usage(char const *argv0)
 {
     fprintf(stderr, "Usage: %s [options]\n", argv0);
     fprintf(stderr, "Options:\n");
@@ -317,8 +305,7 @@ usage(char const *argv0)
 *%DESCRIPTION:
 * Main program
 ***********************************************************************/
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int opt;
     int n;
@@ -605,8 +592,7 @@ main(int argc, char *argv[])
 *%DESCRIPTION:
 * Prints a message plus the errno value to stderr and syslog and exits.
 ***********************************************************************/
-void
-fatalSys(char const *str)
+void fatalSys(char const *str)
 {
     printErr("%.256s: Session %d: %.256s",
 	    str, (int) ntohs(Connection->session), strerror(errno));
