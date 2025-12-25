@@ -48,7 +48,6 @@ Ensure you have the following dependencies installed:
 ```bash
 git clone https://github.com/saffanazyan07/zy-agf.git
 cd z-agf
-sudo chmod +x run_z-agf.sh
 ```
 
 ## Configuration
