@@ -1,0 +1,10 @@
+pppoe:
+  interface: enp0s9
+  sessions: 10
+  subnet: 10.45.0.0/24
+
+oai:
+  ue_interface: oaitun_ue1
+  gnb_conf: ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci1.conf
+  ue_conf: ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/ue.conf
+
