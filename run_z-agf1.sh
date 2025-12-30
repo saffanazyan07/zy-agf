@@ -1,7 +1,7 @@
-!/bin/bash
+#!/bin/bash
 
-# Interface to be used
-INTERFACE="enp0s9"
+# Interface PPPoE akan jalan di enp0s9
+INTERFACE="enp0s10"
 
 # Generate a unique tunnel ID
 TUNNEL_ID="tunnel_$(date +%s)"
@@ -11,6 +11,7 @@ cleanup() {
     echo -e "\n[Z-AGF] Terminating PPPoE server and log monitoring..."
     sudo pkill pppoe-server
     kill "$TAIL_PID" 2>/dev/null
+    kill "$RULE_MONITOR_PID" 2>/dev/null
     echo "[Z-AGF] Processes terminated. Exiting."
     exit 0
 }
@@ -21,7 +22,7 @@ cd ../../../cmake_targets/ran_build/build || exit 1
 
 # Start gNB
 echo "[Z-AGF] Starting nr-softmodem..."
-sudo ./nr-softmodem --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci1.conf \
+sudo ./nr-softmodem --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb-du.sa.band78.106prb.rfsim.pci0.conf \
   2>&1 | sudo tee nr-du.log >/dev/null &
 SOFTMODEM_PID=$!
 
@@ -30,7 +31,7 @@ sleep 5
 
 # Start UE
 echo "[Z-AGF] Starting nr-uesoftmodem..."
-sudo ./nr-uesoftmodem -C 3649440000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/ue.conf --rfsim \
+sudo ./nr-uesoftmodem -C 3450720000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/ue0.conf --rfsim \
   2>&1 | sudo tee nr-ue.log >/dev/null &
 UESOFTMODEM_PID=$!
 
@@ -50,6 +51,7 @@ if [ -z "$IP_ADDR" ]; then
     echo "Error: Unable to find IP for oaitun_ue1 after waiting."
     cleanup
 fi
+
 # Tambahan konfigurasi setelah interface oaitun_ue1 aktif
 echo "[Z-AGF] Enabling IPv4 forwarding..."
 sudo sysctl -w net.ipv4.ip_forward=1
@@ -68,14 +70,35 @@ echo "[Z-AGF] Starting PPPoE server on $INTERFACE using IP from oaitun_ue1 ($IP_
 sudo pppoe-server -I "$INTERFACE" -L "$IP_ADDR" -N 10 2>&1 | sudo tee pppoe_server.log >/dev/null &
 PPPOE_PID=$!
 
+# --- Dynamic IP rule monitor for new PPP interfaces ---
+echo "[Z-AGF] Starting background monitor for new PPP interfaces and peer IP rules..."
+
+# Jalankan ini sebagai background task
+(
+    known_peers=()
+
+    while true; do
+        for iface in $(ip -o link show | awk -F': ' '{print $2}' | grep '^ppp'); do
+            peer_ip=$(ip -4 addr show "$iface" | grep -oP '(?<=peer )\d+(\.\d+){3}')
+            if [[ -n "$peer_ip" && ! " ${known_peers[*]} " =~ " $peer_ip " ]]; then
+                echo "[Z-AGF] Detected new PPP peer IP $peer_ip on $iface — adding rule..."
+                sudo ip rule add from "$peer_ip" lookup 10000
+                known_peers+=("$peer_ip")
+            fi
+        done
+        sleep 2  # Polling interval
+    done
+) &
+RULE_MONITOR_PID=$!
+
 # Monitor log
 sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF] " $0 }' &
 TAIL_PID=$!
 
 sudo tail -f pppoe_server.log | awk '{ print "[Z-AGF] " $0 }' &
-
 # Wait
 wait $PPPOE_PID
 wait $TAIL_PID
 wait $SOFTMODEM_PID
 wait $UESOFTMODEM_PID
+

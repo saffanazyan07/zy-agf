@@ -1,129 +1,81 @@
-#!/usr/bin/env bash
-set -e
+!/bin/bash
 
-#####################################
-# Z-AGF : Access Gateway Function
-#####################################
+# Interface to be used
+INTERFACE="enp0s9"
 
-### === CONFIG FILE ===
-CONFIG_FILE="${1:-conf/z-agf.yaml}"
+# Generate a unique tunnel ID
+TUNNEL_ID="tunnel_$(date +%s)"
 
-### === CHECK DEPENDENCIES ===
-for cmd in yq ip iptables pppoe-server; do
-    command -v $cmd >/dev/null 2>&1 || {
-        echo "[ERROR] $cmd not found"
-        exit 1
-    }
-done
-
-### === LOAD CONFIG FROM YAML ===
-INTERFACE=$(yq e '.pppoe.interface' "$CONFIG_FILE")
-PPPOE_SESSIONS=$(yq e '.pppoe.sessions' "$CONFIG_FILE")
-SUBNET=$(yq e '.pppoe.subnet' "$CONFIG_FILE")
-
-UE_IF=$(yq e '.oai.ue_interface' "$CONFIG_FILE")
-GNB_CONF=$(yq e '.oai.gnb_conf' "$CONFIG_FILE")
-UE_CONF=$(yq e '.oai.ue_conf' "$CONFIG_FILE")
-
-### === VALIDATION ===
-for var in INTERFACE PPPOE_SESSIONS SUBNET UE_IF GNB_CONF UE_CONF; do
-    [ -z "${!var}" ] && echo "[ERROR] $var missing in YAML" && exit 1
-done
-
-### === PATH SETUP ===
-BASE_DIR=$(pwd)
-LOG_DIR="$BASE_DIR/logs"
-RUN_DIR="$BASE_DIR/run"
-
-mkdir -p "$LOG_DIR" "$RUN_DIR"
-
-TUNNEL_ID="z-agf-$(date +%s)"
-
-#####################################
-# CLEANUP
-#####################################
+# Cleanup function
 cleanup() {
-    echo -e "\n[Z-AGF] Cleaning up..."
-
-    for pidfile in "$RUN_DIR"/*.pid; do
-        if [ -f "$pidfile" ]; then
-            kill "$(cat "$pidfile")" 2>/dev/null || true
-        fi
-    done
-
-    sudo iptables -t nat -D POSTROUTING -s "$SUBNET" -o "$UE_IF" -j MASQUERADE 2>/dev/null || true
-    sudo ip route del "$SUBNET" dev "$UE_IF" 2>/dev/null || true
-
-    echo "[Z-AGF] Cleanup complete."
+    echo -e "\n[Z-AGF] Terminating PPPoE server and log monitoring..."
+    sudo pkill pppoe-server
+    kill "$TAIL_PID" 2>/dev/null
+    echo "[Z-AGF] Processes terminated. Exiting."
     exit 0
 }
 trap cleanup SIGINT SIGTERM
 
-#####################################
-# START OAI gNB
-#####################################
-echo "[Z-AGF] Starting gNB..."
-cd ../../../cmake_targets/ran_build/build || {
-    echo "[ERROR] Cannot find OAI build dir"
-    exit 1
-}
+# Masuk ke build folder
+cd ../../../cmake_targets/ran_build/build || exit 1
 
-sudo ./nr-softmodem --rfsim -O "$GNB_CONF" \
-    > "$LOG_DIR/nr-du.log" 2>&1 &
-echo $! > "$RUN_DIR/gnb.pid"
+# Start gNB
+echo "[Z-AGF] Starting nr-softmodem..."
+sudo ./nr-softmodem --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/z-agf2.gnb-du.sa.band78.106prb.rfsim.pci1.conf \
+  2>&1 | sudo tee nr-du.log >/dev/null &
+SOFTMODEM_PID=$!
 
+# Delay
 sleep 5
 
-#####################################
-# START OAI UE
-#####################################
-echo "[Z-AGF] Starting UE..."
-sudo ./nr-uesoftmodem --rfsim -O "$UE_CONF" \
-    > "$LOG_DIR/nr-ue.log" 2>&1 &
-echo $! > "$RUN_DIR/ue.pid"
+# Start UE
+echo "[Z-AGF] Starting nr-uesoftmodem..."
+sudo ./nr-uesoftmodem -C 3649440000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/ue.conf --rfsim \
+  2>&1 | sudo tee nr-ue.log >/dev/null &
+UESOFTMODEM_PID=$!
 
-#####################################
-# WAIT FOR UE INTERFACE
-#####################################
-echo "[Z-AGF] Waiting for UE interface: $UE_IF"
-
+# Wait for interface oaitun_ue1 to appear
+echo "[Z-AGF] Waiting for interface oaitun_ue1..."
+sleep 5
 for i in {1..30}; do
-    UE_IP=$(ip -4 addr show "$UE_IF" 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1)
-    [ -n "$UE_IP" ] && break
+    IP_ADDR=$(ip -4 addr show oaitun_ue1 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+    if [ -n "$IP_ADDR" ]; then
+        break
+    fi
     sleep 1
 done
 
-[ -z "$UE_IP" ] && echo "[ERROR] UE interface not ready" && cleanup
+# Jika IP tidak ditemukan, keluar
+if [ -z "$IP_ADDR" ]; then
+    echo "Error: Unable to find IP for oaitun_ue1 after waiting."
+    cleanup
+fi
+# Tambahan konfigurasi setelah interface oaitun_ue1 aktif
+echo "[Z-AGF] Enabling IPv4 forwarding..."
+sudo sysctl -w net.ipv4.ip_forward=1
 
-echo "[Z-AGF] UE IP acquired: $UE_IP"
+echo "[Z-AGF] Setting up NAT (MASQUERADE) for oaitun_ue1..."
+sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o oaitun_ue1 -j MASQUERADE
 
-#####################################
-# NETWORK SETUP
-#####################################
-sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
-sudo iptables -t nat -A POSTROUTING -s "$SUBNET" -o "$UE_IF" -j MASQUERADE
-sudo ip route add "$SUBNET" dev "$UE_IF"
+echo "[Z-AGF] Adding route to 10.45.0.0/24 via oaitun_ue1..."
+sudo ip route add 10.45.0.0/24 dev oaitun_ue1
 
-#####################################
-# START PPPoE SERVER
-#####################################
-echo "[Z-AGF] Starting PPPoE server on $INTERFACE"
-sudo pppoe-server \
-    -I "$INTERFACE" \
-    -L "$UE_IP" \
-    -N "$PPPOE_SESSIONS" \
-    > "$LOG_DIR/pppoe.log" 2>&1 &
-echo $! > "$RUN_DIR/pppoe.pid"
+# Log informasi tunnel
+echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | sudo tee -a tunnel_log.txt >/dev/null
 
-#####################################
-# STATUS
-#####################################
-echo "======================================="
-echo "[Z-AGF] ACTIVE"
-echo " Tunnel ID : $TUNNEL_ID"
-echo " Interface : $INTERFACE"
-echo " UE IP     : $UE_IP"
-echo " Sessions  : $PPPOE_SESSIONS"
-echo "======================================="
+# Jalankan PPPoE Server pada interface enp0s9, tapi pakai IP dari oaitun_ue1
+echo "[Z-AGF] Starting PPPoE server on $INTERFACE using IP from oaitun_ue1 ($IP_ADDR)..."
+sudo pppoe-server -I "$INTERFACE" -L "$IP_ADDR" -N 10 2>&1 | sudo tee pppoe_server.log >/dev/null &
+PPPOE_PID=$!
 
-wait
+# Monitor log
+sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF] " $0 }' &
+TAIL_PID=$!
+
+sudo tail -f pppoe_server.log | awk '{ print "[Z-AGF] " $0 }' &
+
+# Wait
+wait $PPPOE_PID
+wait $TAIL_PID
+wait $SOFTMODEM_PID
+wait $UESOFTMODEM_PID
