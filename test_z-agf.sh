@@ -58,11 +58,11 @@ sudo ./nr-uesoftmodem -C 3649440000 -r 106 --numerology 1 --ssb 516 -O ../../../
   2>&1 | sudo tee nr-ue.log >/dev/null &
 UESOFTMODEM_PID=$!
 
-# Wait for interface oaitun_ue1 to appear
-echo "[Z-AGF] Waiting for interface oaitun_ue1..."
+# Wait for interface proxy-ue1 to appear
+echo "[Z-AGF] Waiting for interface proxy-ue1..."
 sleep 5
 for i in {1..30}; do
-    IP_ADDR=$(ip -4 addr show oaitun_ue1 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+    IP_ADDR=$(ip -4 addr show proxy-ue1 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
     if [ -n "$IP_ADDR" ]; then
         break
     fi
@@ -71,29 +71,29 @@ done
 
 # Jika IP tidak ditemukan, keluar
 if [ -z "$IP_ADDR" ]; then
-    echo "Error: Unable to find IP for oaitun_ue1 after waiting."
+    echo "Error: Unable to find IP for proxy-ue1 after waiting."
     cleanup
 fi
-# Tambahan konfigurasi setelah interface oaitun_ue1 aktif
+# Tambahan konfigurasi setelah interface proxy-ue1 aktif
 echo "[Z-AGF] Enabling IPv4 forwarding..."
 sudo sysctl -w net.ipv4.ip_forward=1
 
-echo "[Z-AGF] Setting up NAT (MASQUERADE) for oaitun_ue1..."
-sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o oaitun_ue1 -j MASQUERADE
+echo "[Z-AGF] Setting up NAT (MASQUERADE) for proxy-ue1..."
+sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o proxy-ue1 -j MASQUERADE
 
-echo "[Z-AGF] Adding route to 10.45.0.0/24 via oaitun_ue1..."
-sudo ip route add 10.45.0.0/24 dev oaitun_ue1
+echo "[Z-AGF] Adding route to 10.45.0.0/24 via proxy-ue1..."
+sudo ip route add 10.45.0.0/24 dev proxy-ue1
 
 # Log informasi tunnel
 echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | sudo tee -a tunnel_log.txt >/dev/null
 
-# Jalankan PPPoE Server pada interface enp0s9, tapi pakai IP dari oaitun_ue1
+# Jalankan PPPoE Server pada interface enp0s9, tapi pakai IP dari proxy-ue1
 # --- 6. Restart PPPoE server with real tunnel IP
 echo "[Z-AGF] Restarting PPPoE server with IP $IP_ADDR..."
 sudo pkill pppoe-server
 echo "$imsi → $IP_ADDR" >> connected_sessions.log
 sleep 1
-echo "[Z-AGF] Starting PPPoE server on $INTERFACE using IP from oaitun_ue1 ($IP_ADDR)..."
+echo "[Z-AGF] Starting PPPoE server on $INTERFACE using IP from proxy-ue1 ($IP_ADDR)..."
 sudo pppoe-server -I "$INTERFACE" -L "$IP_ADDR" -N 10 2>&1 | sudo tee pppoe_server.log >/dev/null &
 PPPOE_PID=$!
 
