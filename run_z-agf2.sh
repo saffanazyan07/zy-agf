@@ -38,7 +38,7 @@ UESOFTMODEM_PID=$!
 echo "[Z-AGF] Waiting for interface proxy-ue1..."
 sleep 5
 for i in {1..30}; do
-    IP_ADDR=$(ip -4 addr show proxy-ue1 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+    IP_ADDR=$(ip -4 addr show oaitun_ue1 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
     if [ -n "$IP_ADDR" ]; then
         break
     fi
@@ -55,10 +55,10 @@ echo "[Z-AGF] Enabling IPv4 forwarding..."
 sudo sysctl -w net.ipv4.ip_forward=1
 
 echo "[Z-AGF] Setting up NAT (MASQUERADE) for proxy-ue1..."
-sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o proxy-ue1 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -s 10.45.0.0/24 -o oaitun_ue1 -j MASQUERADE
 
 echo "[Z-AGF] Adding route to 10.45.0.0/24 via proxy-ue1..."
-sudo ip route add 10.45.0.0/24 dev proxy-ue1
+sudo ip route add 10.45.0.0/24 dev oaitun_ue1
 
 # Log informasi tunnel
 echo "[INFO] Tunnel ID: $TUNNEL_ID, Interface: $INTERFACE, IP: $IP_ADDR" | sudo tee -a tunnel_log.txt >/dev/null
