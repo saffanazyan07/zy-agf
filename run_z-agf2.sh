@@ -23,7 +23,7 @@ cd ../../../cmake_targets/ran_build/build || exit 1
 echo "[Z-AGF] Starting z-agf..."
 sudo ./d-cu --rfsim -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/z-agf2.gnb-du.sa.band78.106prb.rfsim.pci1.conf \
   2>&1 | sudo tee nr-du.log >/dev/null &
-SOFTMODEM_PID=$!
+DCU_PID=$!
 
 # Delay
 sleep 5
@@ -32,7 +32,7 @@ sleep 5
 echo "[Z-AGF] Starting proxy-ue..."
 sudo ./proxy-ue -C 3649440000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/proxy-ue2.conf --rfsim \
   2>&1 | sudo tee nr-ue.log >/dev/null &
-UESOFTMODEM_PID=$!
+PROXYUE_PID=$!
 
 # Wait for interface proxy-ue1 to appear
 echo "[Z-AGF] Waiting for interface proxy-ue1..."
