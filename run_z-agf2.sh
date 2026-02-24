@@ -77,5 +77,5 @@ sudo tail -f pppoe_server.log | awk '{ print "[Z-AGF] " $0 }' &
 # Wait
 wait $PPPOE_PID
 wait $TAIL_PID
-wait $SOFTMODEM_PID
-wait $UESOFTMODEM_PID
+wait $DCU_PID
+wait $PROXYUE_PID
