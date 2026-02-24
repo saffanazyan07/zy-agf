@@ -30,7 +30,7 @@ sleep 5
 
 # Start UE
 echo "[Z-AGF] Starting proxy-ue..."
-sudo ./proxy-ue -C 3649440000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/proxy-ue2.conf --rfsim \
+sudo ./proxy-ue -C 3450720000 -r 106 --numerology 1 --ssb 516 -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/proxy-ue2.conf --rfsim \
   2>&1 | sudo tee nr-ue.log >/dev/null &
 PROXYUE_PID=$!
 
