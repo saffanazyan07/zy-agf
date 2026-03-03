@@ -90,6 +90,8 @@ echo "[Z-AGF] Starting background monitor for new PPP interfaces and peer IP rul
     done
 ) &
 RULE_MONITOR_PID=$!
+sudo ip route add 10.51.0.0/24 dev gtp-tun0 table 10000
+
 
 # Monitor log
 sudo tail -f /var/log/pppoe.log | awk '{ print "[Z-AGF] " $0 }' &
